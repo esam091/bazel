@@ -131,6 +131,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.annotation.Nullable;
 
@@ -300,6 +301,11 @@ public class CompilationSupport {
       ObjcCppSemantics semantics,
       String purpose)
       throws RuleErrorException {
+    ImmutableList<Artifact> moduleMaps = objcProvider.moduleMap().toList();
+
+
+    List<String> moduleMapFlags = moduleMaps.stream().map(artifact -> "-fmodule-map-file=" + artifact.getExecPathString()).collect(Collectors.toList());
+
     CcCompilationHelper result =
         new CcCompilationHelper(
                 ruleContext,
@@ -312,6 +318,7 @@ public class CompilationSupport {
                 ccToolchain,
                 fdoContext,
                 buildConfiguration)
+                .addAdditionalCompilationInputs(moduleMaps)
             .addSources(sources)
             .addPrivateHeaders(privateHdrs)
             .addDefines(objcProvider.get(DEFINE))
@@ -328,6 +335,7 @@ public class CompilationSupport {
                             .getFragment(ObjcConfiguration.class)
                             .getCoptsForCompilationMode())
                     .addAll(extraCompileArgs)
+                        .addAll(moduleMapFlags)
                     .build())
             .addIncludeDirs(priorityHeaders)
             .addIncludeDirs(objcProvider.get(INCLUDE))
