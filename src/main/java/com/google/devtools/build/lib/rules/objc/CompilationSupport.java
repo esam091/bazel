@@ -295,15 +295,13 @@ public class CompilationSupport {
       Collection<Artifact> sources,
       Collection<Artifact> privateHdrs,
       Collection<Artifact> publicHdrs,
+      Collection<Artifact> moduleMaps,
       Artifact pchHdr,
       // TODO(b/70777494): Find out how deps get used and remove if not needed.
       Iterable<? extends TransitiveInfoCollection> deps,
       ObjcCppSemantics semantics,
       String purpose)
       throws RuleErrorException {
-    ImmutableList<Artifact> moduleMaps = objcProvider.moduleMap().toList();
-
-
     List<String> moduleMapFlags = moduleMaps.stream().map(artifact -> "-fmodule-map-file=" + artifact.getExecPathString()).collect(Collectors.toList());
 
     CcCompilationHelper result =
@@ -386,6 +384,11 @@ public class CompilationSupport {
         ruleContext.getPrerequisites("deps", Mode.TARGET);
     ObjcCppSemantics semantics = createObjcCppSemantics(objcProvider, privateHdrs, pchHdr);
 
+    ImmutableList<Artifact> allModuleMaps = objcProvider.moduleMap().toList();
+
+    String excludedPath = intermediateArtifacts.moduleMap().getArtifact().getExecPathString();
+    List<Artifact> filteredModuleMaps = allModuleMaps.stream().filter(moduleMap -> !moduleMap.getExecPathString().equals(excludedPath)).collect(Collectors.toList());
+
     String purpose = String.format("%s_objc_arc", semantics.getPurpose());
     extensionBuilder.setArcEnabled(true);
     CompilationInfo objcArcCompilationInfo =
@@ -399,6 +402,7 @@ public class CompilationSupport {
             arcSources,
             privateHdrs,
             publicHdrs,
+            filteredModuleMaps,
             pchHdr,
             deps,
             semantics,
@@ -417,6 +421,7 @@ public class CompilationSupport {
             nonArcSources,
             privateHdrs,
             publicHdrs,
+            filteredModuleMaps,
             pchHdr,
             deps,
             semantics,
